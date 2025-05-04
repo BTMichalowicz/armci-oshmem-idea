@@ -12,12 +12,12 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.11 color-tests parallel-tests subdir-o
 LT_PREREQ([2.2.6])
 
 ## Bug in libtool adds -O2 and -g by default
-if test ! -z "$MPICC" ; then
-   CC=$MPICC
+if test ! -z "$OSHCC" ; then
+   CC=$OSHCC
    export CC
 fi
 PAC_PUSH_FLAG(CFLAGS)
-AC_PROG_CC(mpicc)
+AC_PROG_CC(oshcc)
 AM_PROG_CC_C_O
 
 # automake 1.12 seems to require this, but automake 1.11 doesn't recognize it
