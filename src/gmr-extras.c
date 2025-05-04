@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
-
+#include <shmem.h>
 #include <armci.h>
 #include <armcix.h>
 #include <armci_internals.h>

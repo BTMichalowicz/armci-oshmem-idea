@@ -26,7 +26,7 @@ unsigned DEBUG_CATS_ENABLED =
 void ARMCII_Assert_fail(const char *expr, const char *msg, const char *file, int line, const char *func) {
   int rank;
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  rank = shmem_my_pe(); //MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   if (msg == NULL)
     fprintf(stderr, "[%d] ARMCI assert fail in %s() [%s:%d]: \"%s\"\n", rank, func, file, line, expr);
@@ -59,10 +59,12 @@ void ARMCII_Assert_fail(const char *expr, const char *msg, const char *file, int
 
   fflush(NULL);
   {
-    double stall = MPI_Wtime();
-    while (MPI_Wtime() - stall < 1) ;
+    double stall = shmem_wtime();
+    while (shmem_wtime() - stall < 1) ;
   }
-  MPI_Abort(MPI_COMM_WORLD, -1);
+
+  shmem_global_exit(-1);
+  //MPI_Abort(MPI_COMM_WORLD, -1);
 }
 
 

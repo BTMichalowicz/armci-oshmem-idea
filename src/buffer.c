@@ -27,7 +27,7 @@ int ARMCII_Buf_prepare_read_vec(void **orig_bufs, void ***new_bufs_ptr, int coun
   int num_moved = 0;
 
   if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-    void **new_bufs = malloc(count*sizeof(void*));
+    void **new_bufs = shmem_malloc(count*sizeof(void*));
     int i;
 
     for (i = 0; i < count; i++)
@@ -39,7 +39,7 @@ int ARMCII_Buf_prepare_read_vec(void **orig_bufs, void ***new_bufs_ptr, int coun
       gmr_t *mreg = gmr_lookup(orig_bufs[i], ARMCI_GROUP_WORLD.rank);
 
       if (mreg != NULL) {
-        MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
+        new_bufs[i] = shmem_malloc(size); //MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
         ARMCII_Assert(new_bufs[i] != NULL);
 
         ARMCI_Copy(orig_bufs[i], new_bufs[i], size);
@@ -76,7 +76,7 @@ void ARMCII_Buf_finish_read_vec(void **orig_bufs, void **new_bufs, int count, in
 
     for (i = 0; i < count; i++) {
       if (orig_bufs[i] != new_bufs[i]) {
-        MPI_Free_mem(new_bufs[i]);
+        shmem_free(new_bufs[i]); //MPI_Free_mem(new_bufs[i]);
       }
     }
 
@@ -103,7 +103,7 @@ int ARMCII_Buf_prepare_acc_vec(void **orig_bufs, void ***new_bufs_ptr, int count
   void **new_bufs;
   int i, scaled, num_moved = 0;
   
-  new_bufs = malloc(count*sizeof(void*));
+  new_bufs = shmem_malloc(count*sizeof(void*));
   ARMCII_Assert(new_bufs != NULL);
 
   scaled = ARMCII_Buf_acc_is_scaled(datatype, scale);
@@ -116,7 +116,8 @@ int ARMCII_Buf_prepare_acc_vec(void **orig_bufs, void ***new_bufs_ptr, int count
       mreg = gmr_lookup(orig_bufs[i], ARMCI_GROUP_WORLD.rank);
 
     if (scaled) {
-      MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
+      new_bufs[i] = shmem_malloc(size);
+      //      MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
       ARMCII_Assert(new_bufs[i] != NULL);
 
       ARMCII_Buf_acc_scale(orig_bufs[i], new_bufs[i], size, datatype, scale);
@@ -128,7 +129,8 @@ int ARMCII_Buf_prepare_acc_vec(void **orig_bufs, void ***new_bufs_ptr, int count
     if (mreg != NULL) {
       // If the buffer wasn't copied, we should copy it into a private buffer
       if (new_bufs[i] == orig_bufs[i]) {
-        MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
+        &new_bufs[i] = shmem_malloc(size);
+        //MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
         ARMCII_Assert(new_bufs[i] != NULL);
 
         ARMCI_Copy(orig_bufs[i], new_bufs[i], size);
@@ -159,7 +161,7 @@ void ARMCII_Buf_finish_acc_vec(void **orig_bufs, void **new_bufs, int count, int
 
   for (i = 0; i < count; i++) {
     if (orig_bufs[i] != new_bufs[i]) {
-      MPI_Free_mem(new_bufs[i]);
+      shmem_free(new_bufs[i]); //MPI_Free_mem(new_bufs[i]);
     }
   }
 
@@ -193,7 +195,8 @@ int ARMCII_Buf_prepare_write_vec(void **orig_bufs, void ***new_bufs_ptr, int cou
       gmr_t *mreg = gmr_lookup(orig_bufs[i], ARMCI_GROUP_WORLD.rank);
 
       if (mreg != NULL) {
-        MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
+        (new_bufs[i]) = shmem_malloc(size);
+        //MPI_Alloc_mem(size, MPI_INFO_NULL, &new_bufs[i]);
         ARMCII_Assert(new_bufs[i] != NULL);
         num_moved++;
       } else {
@@ -231,7 +234,7 @@ void ARMCII_Buf_finish_write_vec(void **orig_bufs, void **new_bufs, int count, i
         ARMCI_Copy(new_bufs[i], orig_bufs[i], size);
         // gmr_put(mreg, new_bufs[i], orig_bufs[i], size, ARMCI_GROUP_WORLD.rank);
 
-        MPI_Free_mem(new_bufs[i]);
+        shmem_free(new_bufs[i]); //MPI_Free_mem(new_bufs[i]);
       }
     }
 
@@ -306,7 +309,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
 
   switch (datatype) {
     case ARMCI_ACC_INT:
-      MPI_Type_size(MPI_INT, &type_size);
+      type_size = SHMEM_INT;//MPI_Type_size(MPI_INT, &type_size);
       nelem= size/type_size;
 
       {
@@ -320,7 +323,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
       break;
 
     case ARMCI_ACC_LNG:
-      MPI_Type_size(MPI_LONG, &type_size);
+      type_size = SHMEM_LONG; //MPI_Type_size(MPI_LONG, &type_size);
       nelem= size/type_size;
 
       {
@@ -334,7 +337,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
       break;
 
     case ARMCI_ACC_FLT:
-      MPI_Type_size(MPI_FLOAT, &type_size);
+      type_size = SHMEM_FLOAT; //MPI_Type_size(MPI_FLOAT, &type_size);
       nelem= size/type_size;
 
       {
@@ -348,7 +351,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
       break;
 
     case ARMCI_ACC_DBL:
-      MPI_Type_size(MPI_DOUBLE, &type_size);
+      type_size = SHMEM_DOUBLE; //MPI_Type_size(MPI_DOUBLE, &type_size);
       nelem= size/type_size;
 
       {
@@ -362,7 +365,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
       break;
 
     case ARMCI_ACC_CPL:
-      MPI_Type_size(MPI_FLOAT, &type_size);
+     type_size = SHMEM_FLOAT; // MPI_Type_size(MPI_FLOAT, &type_size);
       nelem= size/type_size;
 
       {
@@ -386,7 +389,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
       break;
 
     case ARMCI_ACC_DCP:
-      MPI_Type_size(MPI_DOUBLE, &type_size);
+      type_size = SHMEM_DOUBLE; //MPI_Type_size(MPI_DOUBLE, &type_size);
       nelem= size/type_size;
 
       {

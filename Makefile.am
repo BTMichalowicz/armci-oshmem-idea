@@ -51,8 +51,10 @@ check_PROGRAMS =
 TESTS = 
 XFAIL_TESTS = 
 
-MPIEXEC = mpiexec -n 2
+MPIEXEC = oshrun -n 2
 LOG_COMPILER=$(MPIEXEC)
+MPIRUN = mpirun -n 2
+LOG_COMPILER="${LOG_COMPILER} $(MPIRUN)"
 
 include benchmarks/Makefile.mk
 include tests/Makefile.mk

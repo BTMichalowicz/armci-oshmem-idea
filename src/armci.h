@@ -6,7 +6,7 @@
 #define _ARMCI_H_
 
 #include <mpi.h>
-
+#include<shmem.h>
 #define ARMCI_MPI 3
 
 enum  ARMCI_Acc_e { ARMCI_ACC_INT /*     int */, ARMCI_ACC_LNG /*           long */,
@@ -158,6 +158,8 @@ int ARMCI_Rmw(int op, void *ploc, void *prem, int value, int proc);
   */
 
 typedef struct {
+  shmem_team_t s_comm;
+  shmem_team_t s_noncoll_pgroup_comm;
   MPI_Comm  comm;
   MPI_Comm  noncoll_pgroup_comm;
   int      *grp_to_abs;

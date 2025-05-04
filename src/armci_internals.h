@@ -22,12 +22,24 @@
 #include <errno.h>
 #endif
 
-#include <mpi.h>
-
+//#include <mpi.h>
+#include <shmem.h>
 #ifdef HAVE_PTHREADS
 #  include <pthread.h>
 #endif
 
+#include <sys/time.h>
+#include <unistd.h>
+
+
+static inline double shmem_wtime(void) {
+    double wtime = 0.0;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    wtime = tv.tv_sec;
+    wtime += (double)tv.tv_usec / 1.0e6;
+    return wtime;
+}
 
 #ifdef HAVE_MEMKIND_H
 #include <memkind.h>
@@ -66,6 +78,7 @@
 #endif
 
 
+
 /* Disable safety checks if the user asks for it */
 
 #ifdef NO_SEATBELTS
@@ -86,6 +99,29 @@ enum ARMCII_Iov_methods_e { ARMCII_IOV_AUTO, ARMCII_IOV_CONSRV,
                             ARMCII_IOV_BATCHED, ARMCII_IOV_DIRECT };
 
 enum ARMCII_Shr_buf_methods_e { ARMCII_SHR_BUF_COPY, ARMCII_SHR_BUF_NOGUARD };
+
+
+/* Taken unceremoniously from MVAPICH-2.3.7 source code */
+/* "CUSTOM" OSHMEM DATATYPES */
+typedef int SHMEM_Datatype;
+#define SHMEM_CHAR           ((SHMEM_Datatype)0x4c000101)
+#define SHMEM_SIGNED_CHAR    ((SHMEM_Datatype)0x4c000118)
+#define SHMEM_UNSIGNED_CHAR  ((SHMEM_Datatype)0x4c000102)
+#define SHMEM_BYTE           ((SHMEM_Datatype)0x4c00010d)
+#define SHMEM_WCHAR          ((SHMEM_Datatype)0x4c00040e)
+#define SHMEM_SHORT          ((SHMEM_Datatype)0x4c000203)
+#define SHMEM_UNSIGNED_SHORT ((SHMEM_Datatype)0x4c000204)
+#define SHMEM_INT            ((SHMEM_Datatype)0x4c000405)
+#define SHMEM_UNSIGNED       ((SHMEM_Datatype)0x4c000406)
+#define SHMEM_LONG           ((SHMEM_Datatype)0x4c000807)
+#define SHMEM_UNSIGNED_LONG  ((SHMEM_Datatype)0x4c000808)
+#define SHMEM_FLOAT          ((SHMEM_Datatype)0x4c00040a)
+#define SHMEM_DOUBLE         ((SHMEM_Datatype)0x4c00080b)
+#define SHMEM_LONG_DOUBLE    ((SHMEM_Datatype)0x4c00100c)
+#define SHMEM_LONG_LONG_INT  ((SHMEM_Datatype)0x4c000809)
+#define SHMEM_UNSIGNED_LONG_LONG ((SHMEM_Datatype)0x4c000819)
+#define SHMEM_LONG_LONG      SHMEM_LONG_LONG_INT
+
 
 extern char ARMCII_Strided_methods_str[][10];
 extern char ARMCII_Iov_methods_str[][10];
@@ -127,13 +163,13 @@ typedef struct {
 
 
 /* Global data */
-
+typedef int SHMEM_Op
 extern ARMCI_Group    ARMCI_GROUP_WORLD;
 extern ARMCI_Group    ARMCI_GROUP_DEFAULT;
-extern MPI_Op         ARMCI_MPI_ABSMIN_OP;
-extern MPI_Op         ARMCI_MPI_ABSMAX_OP;
-extern MPI_Op         ARMCI_MPI_SELMIN_OP;
-extern MPI_Op         ARMCI_MPI_SELMAX_OP;
+extern SHMEM_Op         ARMCI_SHMEM_ABSMIN_OP;
+extern SHMEM_Op         ARMCI_SHMEM_ABSMAX_OP;
+extern SHMEM_Op         ARMCI_SHMEM_SELMIN_OP;
+extern SHMEM_Op         ARMCI_SHMEM_SELMAX_OP;
 extern global_state_t ARMCII_GLOBAL_STATE;
 #ifdef HAVE_PTHREADS
 extern pthread_t      ARMCI_Progress_thread;
@@ -154,11 +190,11 @@ void ARMCII_Sync_local(void);
 
 /* GOP Operators */
 
-void ARMCII_Absmin_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype);
-void ARMCII_Absmax_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype);
-void ARMCII_Absv_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype);
-void ARMCII_Msg_sel_min_op(void *data_in, void *data_inout, int *len, MPI_Datatype *datatype);
-void ARMCII_Msg_sel_max_op(void *data_in, void *data_inout, int *len, MPI_Datatype *datatype);
+void ARMCII_Absmin_op(void *invec, void *inoutvec, int *len, SHMEM_Datatype *datatype);
+void ARMCII_Absmax_op(void *invec, void *inoutvec, int *len, SHMEM_Datatype *datatype);
+void ARMCII_Absv_op(void *invec, void *inoutvec, int *len, SHMEM_Datatype datatype);
+void ARMCII_Msg_sel_min_op(void *data_in, void *data_inout, int *len, SHMEM_Datatype *datatype);
+void ARMCII_Msg_sel_max_op(void *data_in, void *data_inout, int *len, SHMEM_Datatype *datatype);
 
 
 /* Group helper routines */
@@ -187,7 +223,7 @@ typedef struct {
   int  *idx;
 } armcii_iov_iter_t;
 
-void ARMCII_Acc_type_translate(int armci_datatype, MPI_Datatype *type, int *type_size);
+void ARMCII_Acc_type_translate(int armci_datatype, SHMEM_Datatype *type, int *type_size);
 
 int  ARMCII_Iov_check_overlap(void **ptrs, int count, int size);
 int  ARMCII_Iov_check_same_allocation(void **ptrs, int count, int proc);
@@ -198,15 +234,15 @@ void ARMCII_Strided_to_iov(armci_giov_t *iov,
                int count[/*stride_levels+1*/], int stride_levels);
 
 void ARMCII_Strided_to_dtype(int stride_array[/*stride_levels*/], int count[/*stride_levels+1*/],
-                             int stride_levels, MPI_Datatype old_type, MPI_Datatype *new_type);
+                             int stride_levels, SHMEM_Datatype old_type, SHMEM_Datatype *new_type);
 
 int ARMCII_Iov_op_dispatch(enum ARMCII_Op_e op, void **src, void **dst, int count, int size,
     int datatype, int overlapping, int same_alloc, int proc, int blocking);
 
 int ARMCII_Iov_op_batched(enum ARMCII_Op_e op, void **src, void **dst, int count, int elem_count,
-    MPI_Datatype type, int proc, int consrv /* if 1, batched = safe */, int blocking);
+    SHMEM_Datatype type, int proc, int consrv /* if 1, batched = safe */, int blocking);
 int ARMCII_Iov_op_datatype(enum ARMCII_Op_e op, void **src, void **dst, int count, int elem_count,
-    MPI_Datatype type, int proc, int blocking);
+    SHMEM_Datatype type, int proc, int blocking);
 
 armcii_iov_iter_t *ARMCII_Strided_to_iov_iter(
                void *src_ptr, int src_stride_ar[/*stride_levels*/],

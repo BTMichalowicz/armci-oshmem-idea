@@ -3,8 +3,7 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <mpi.h>
+#include <stdlib.h>#include <mpi.h>
 
 #include <armci.h>
 #include <armcix.h>
