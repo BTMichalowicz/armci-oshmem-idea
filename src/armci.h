@@ -67,6 +67,9 @@ int   ARMCI_PutS_flag(void *src_ptr, int src_stride_ar[/*stride_levels*/],
                  int count[/*stride_levels+1*/], int stride_levels,
                  int *flag, int value, int proc);
 
+int activate_offload(void);
+int deactivate_offload(void);
+
 typedef struct armci_hdl_s
 {
 #ifdef USE_RMA_REQUESTS

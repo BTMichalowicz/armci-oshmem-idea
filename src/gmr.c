@@ -198,6 +198,9 @@ gmr_t *gmr_create(gmr_size_t local_size, void **base_ptrs, ARMCI_Group *group) {
   else if (ARMCII_GLOBAL_STATE.use_win_allocate == 1) {
 
       MPI_Win_allocate( (MPI_Aint) local_size, 1, win_info, group->comm, &(alloc_slices[alloc_me].base), &mreg->window);
+      if (ARMCII_GLOBA_STATE.enable_offload_DPU){
+          reg_and_exch_queue_MPI(mreg->win_buf, mreg->window, local_size);
+      }
 
       if (local_size == 0) {
         /* TODO: Is this necessary?  Is it a good idea anymore? */
@@ -399,6 +402,10 @@ void gmr_destroy(gmr_t *mreg, ARMCI_Group *group) {
 
   /* Destroy the window and free all buffers */
   MPI_Win_free(&mreg->window);
+
+  if (ARMCII_GLOBAL_STATE.enable_offload_DPU){ /* TODO: Reimplement! */
+      remove_Win_from_MPI_Queue(mreg->win_buf, mreg->window, mreg->win_size);
+  }
 
   if (ARMCII_GLOBAL_STATE.use_win_allocate == 0) {
     if (mreg->slices[world_me].base != NULL) {
@@ -652,10 +659,14 @@ int gmr_get_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
 
   if (ARMCII_GLOBAL_STATE.rma_atomicity) {
       MPI_Get_accumulate(NULL, 0, MPI_BYTE, dst, dst_count, dst_type, grp_proc,
-                         (MPI_Aint) disp, src_count, src_type, MPI_NO_OP, mreg->window);
+              (MPI_Aint) disp, src_count, src_type, MPI_NO_OP, mreg->window);
   } else {
-      MPI_Get(dst, dst_count, dst_type, grp_proc,
-              (MPI_Aint) disp, src_count, src_type, mreg->window);
+      if (ARMCII_GLOBAL_STATE.enable_offload_DPU){
+          MV2_Get_offload(dst, dst_count, dst_type, grp_proc, (MPI_Aint) disp, src_count, mreg_window);
+      }else {
+          MPI_Get(dst, dst_count, dst_type, grp_proc,
+                  (MPI_Aint) disp, src_count, src_type, mreg->window);
+      }
   }
 
 #ifndef USE_RMA_REQUESTS
@@ -987,6 +998,9 @@ int gmr_flushall(gmr_t *mreg, int local_only) {
 
   if (!local_only || ARMCII_GLOBAL_STATE.end_to_end_flush) {
     MPI_Win_flush_all(mreg->window);
+    if (ARMCII_GLOBAL_STATE.enable_offload_DPU == 1){
+        MV2_flush_all(mreg->window);
+    }
   } else {
     MPI_Win_flush_local_all(mreg->window);
   }

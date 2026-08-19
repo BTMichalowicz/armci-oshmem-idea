@@ -116,6 +116,7 @@ typedef struct {
   int           use_request_atomics;    /* Use request-based RMA for atomic operations                          */
   int           flush_request_atomics;  /* Force remote completion (Win_flush) after request-based atomics      */
   char          rma_ordering[20];       /* Set accumulate_ordering=<this> window info key                       */
+  int           enable_offload_DPU;     /* DPU-Based offloading. This can be toggled                            */
 
   size_t        memory_limit;           /* upper bound on how much memory ARMCI can allocate                    */
 #ifdef HAVE_MEMKIND_H

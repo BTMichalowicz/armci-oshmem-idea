@@ -165,6 +165,18 @@ static void ARMCII_Parse_library_version(char * library_version, enum ARMCII_MPI
     }
 }
 
+int activate_offload(){
+    ARMCII_GLOBAL_STATE.enable_offload_DPU = 1;
+    return 0;
+}
+
+int deactivate_offload(){
+    if (ARMCII_GLOBAL_STATE.enable_offload_DPU){
+        ARMCII_GLOBAL_STATE.enable_offload_DPU = 0;
+    }
+    return 0;
+}
+
 /* -- begin weak symbols block -- */
 #if defined(HAVE_PRAGMA_WEAK)
 #  pragma weak ARMCI_Init_thread_comm = PARMCI_Init_thread_comm
@@ -206,6 +218,10 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
   ARMCI_GROUP_DEFAULT = ARMCI_GROUP_WORLD;
 
   /* Create GOP operators */
+
+  ARMCII_GLOBAL_STATE.enable_offload_DPU = ARMCII_Getenv_bool("ARMCI_DPU_OFFLOAD", 0);
+  deactivate_offload();
+  /* Deferred setp to offload to DPUs */
 
   MPI_Op_create(ARMCII_Absmin_op, 1 /* commute */, &ARMCI_MPI_ABSMIN_OP);
   MPI_Op_create(ARMCII_Absmax_op, 1 /* commute */, &ARMCI_MPI_ABSMAX_OP);
