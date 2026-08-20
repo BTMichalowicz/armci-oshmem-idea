@@ -29,6 +29,8 @@ typedef struct {
 typedef struct gmr_s {
   MPI_Win                 window;         /* MPI Window for this GMR                                        */
   ARMCI_Group             group;          /* Copy of the ARMCI group on which this GMR was allocated        */
+  void                   *win_buf;
+  long                   win_size;
 
   struct gmr_s           *prev;           /* Linked list pointers for GMR list                              */
   struct gmr_s           *next;

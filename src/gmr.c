@@ -119,6 +119,7 @@ gmr_t *gmr_create(gmr_size_t local_size, void **base_ptrs, ARMCI_Group *group) {
   mreg->prev           = NULL;
   mreg->next           = NULL;
   mreg->unified        = false;
+  mreg->win_size = local_size;
 
   /* Allocate my slice of the GMR */
   alloc_slices[alloc_me].size = local_size;
@@ -198,7 +199,8 @@ gmr_t *gmr_create(gmr_size_t local_size, void **base_ptrs, ARMCI_Group *group) {
   else if (ARMCII_GLOBAL_STATE.use_win_allocate == 1) {
 
       MPI_Win_allocate( (MPI_Aint) local_size, 1, win_info, group->comm, &(alloc_slices[alloc_me].base), &mreg->window);
-      if (ARMCII_GLOBA_STATE.enable_offload_DPU){
+      mreg->win_buf = alloc_slizes[alloc_me].base;
+      if (ARMCII_GLOBA:_STATE.enable_offload_DPU){
           reg_and_exch_queue_MPI(mreg->win_buf, mreg->window, local_size);
       }
 
@@ -662,7 +664,7 @@ int gmr_get_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
               (MPI_Aint) disp, src_count, src_type, MPI_NO_OP, mreg->window);
   } else {
       if (ARMCII_GLOBAL_STATE.enable_offload_DPU){
-          MV2_Get_offload(dst, dst_count, dst_type, grp_proc, (MPI_Aint) disp, src_count, mreg_window);
+          MV2_Get_offload(dst, dst_count, dst_type, grp_proc, (MPI_Aint) disp, src_count, mreg->window);
       }else {
           MPI_Get(dst, dst_count, dst_type, grp_proc,
                   (MPI_Aint) disp, src_count, src_type, mreg->window);
