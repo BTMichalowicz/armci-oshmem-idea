@@ -199,8 +199,8 @@ gmr_t *gmr_create(gmr_size_t local_size, void **base_ptrs, ARMCI_Group *group) {
   else if (ARMCII_GLOBAL_STATE.use_win_allocate == 1) {
 
       MPI_Win_allocate( (MPI_Aint) local_size, 1, win_info, group->comm, &(alloc_slices[alloc_me].base), &mreg->window);
-      mreg->win_buf = alloc_slizes[alloc_me].base;
-      if (ARMCII_GLOBA:_STATE.enable_offload_DPU){
+      mreg->win_buf = alloc_slices[alloc_me].base;
+      if (ARMCII_GLOBAL_STATE.enable_offload_DPU){
           reg_and_exch_queue_MPI(mreg->win_buf, mreg->window, local_size);
       }
 
